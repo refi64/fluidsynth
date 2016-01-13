@@ -1262,7 +1262,7 @@ fluid_direct_equal (const void *v1, const void *v2)
  * @v: a void * key
  *
  * Converts a gpointer to a hash value.
- * It can be passed to g_hashtable_new() as the @hash_func parameter, 
+ * It can be passed to new_fluid_hashtable() as the @hash_func parameter, 
  * when using pointers as keys in a #fluid_hashtable_t.
  *
  * Returns: a hash value corresponding to the key.
@@ -1280,7 +1280,7 @@ fluid_direct_hash (const void *v)
  *
  * Compares the two #gint values being pointed to and returns 
  * %TRUE if they are equal.
- * It can be passed to g_hashtable_new() as the @key_equal_func
+ * It can be passed to new_fluid_hashtable() as the @key_equal_func
  * parameter, when using pointers to integers as keys in a #fluid_hashtable_t.
  * 
  * Returns: %TRUE if the two keys match.
@@ -1296,7 +1296,7 @@ fluid_int_equal (const void *v1, const void *v2)
  * @v: a pointer to a int key
  *
  * Converts a pointer to a #gint to a hash value.
- * It can be passed to g_hashtable_new() as the @hash_func parameter, 
+ * It can be passed to new_fluid_hashtable() as the @hash_func parameter, 
  * when using pointers to integers values as keys in a #fluid_hashtable_t.
  *
  * Returns: a hash value corresponding to the key.

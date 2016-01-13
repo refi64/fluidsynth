@@ -70,7 +70,6 @@ fluid_list_append(fluid_list_t *list, void*  data)
   if (list)
     {
       last = fluid_list_last(list);
-      /* g_assert (last != NULL); */
       last->next = new_list;
 
       return list;

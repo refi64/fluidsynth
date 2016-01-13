@@ -56,16 +56,36 @@ void fluid_time_config(void);
 
 /* Misc */
 
-#define fluid_return_val_if_fail  g_return_val_if_fail
-#define fluid_return_if_fail      g_return_if_fail
-#define FLUID_INLINE              inline
-#define FLUID_POINTER_TO_UINT     GPOINTER_TO_UINT
-#define FLUID_UINT_TO_POINTER     GUINT_TO_POINTER
-#define FLUID_POINTER_TO_INT      GPOINTER_TO_INT
-#define FLUID_INT_TO_POINTER      GINT_TO_POINTER
-#define FLUID_N_ELEMENTS(struct)  (sizeof (struct) / sizeof (struct[0]))
+#define FLUID_STMT_START do
+#define FLUID_STMT_END while (0)
 
-#define FLUID_IS_BIG_ENDIAN       (G_BYTE_ORDER == G_BIG_ENDIAN)
+#define fluid_strify2(x) #x
+#define fluid_strify(x) fluid_strify2(x)
+#define fluid_warning(msg) \
+    FLUID_STMT_START { \
+        printf("WARNING:" __FILE__ ":" fluid_strify(__LINE__) ": " msg "\n"); \
+    } FLUID_STMT_END
+
+#define fluid_return_val_if_fail(expr, ret) \
+    FLUID_STMT_START { \
+        if (!(expr)) { \
+            fluid_warning("condition failed: " #expr); \
+            return ret; \
+        } \
+    } FLUID_STMT_END
+#define fluid_return_if_fail(expr)      fluid_return_val_if_fail(expr,)
+#define FLUID_INLINE                    inline
+#define FLUID_POINTER_TO_UINT(expr)     ((unsigned int) (uintptr_t) (expr))
+#define FLUID_UINT_TO_POINTER(expr)     ((void*) (uintptr_t) (expr))
+#define FLUID_POINTER_TO_INT(expr)      ((int) (intptr_t) (expr))
+#define FLUID_INT_TO_POINTER(expr)      ((void*) (intptr_t) (expr))
+#define FLUID_N_ELEMENTS(struct)        (sizeof (struct) / sizeof (struct[0]))
+
+#ifdef WORDS_BIGENDIAN
+#define FLUID_IS_BIG_ENDIAN WORDS_BIGENDIAN
+#else
+#define FLUID_IS_BIG_ENDIAN FALSE
+#endif
 
 /*
  * Utility functions
@@ -211,10 +231,10 @@ typedef GStaticMutex fluid_mutex_t;
 #define fluid_mutex_lock(_m)      g_static_mutex_lock(&(_m))
 #define fluid_mutex_unlock(_m)    g_static_mutex_unlock(&(_m))
 
-#define fluid_mutex_init(_m)      G_STMT_START { \
+#define fluid_mutex_init(_m)      FLUID_STMT_START { \
   if (!g_thread_supported ()) g_thread_init (NULL); \
   g_static_mutex_init (&(_m)); \
-} G_STMT_END;
+} FLUID_STMT_END;
 
 /* Recursive lock capable mutex */
 typedef GStaticRecMutex fluid_rec_mutex_t;
@@ -222,10 +242,10 @@ typedef GStaticRecMutex fluid_rec_mutex_t;
 #define fluid_rec_mutex_lock(_m)      g_static_rec_mutex_lock(&(_m))
 #define fluid_rec_mutex_unlock(_m)    g_static_rec_mutex_unlock(&(_m))
 
-#define fluid_rec_mutex_init(_m)      G_STMT_START { \
+#define fluid_rec_mutex_init(_m)      FLUID_STMT_START { \
   if (!g_thread_supported ()) g_thread_init (NULL); \
   g_static_rec_mutex_init (&(_m)); \
-} G_STMT_END;
+} FLUID_STMT_END;
 
 /* Dynamically allocated mutex suitable for fluid_cond_t use */
 typedef GMutex    fluid_cond_mutex_t;
@@ -254,10 +274,10 @@ typedef GStaticPrivate fluid_private_t;
 #define fluid_private_set(_priv, _data)            g_static_private_set(&(_priv), _data, NULL)
 #define fluid_private_free(_priv)                  g_static_private_free(&(_priv))
 
-#define fluid_private_init(_priv)                  G_STMT_START { \
+#define fluid_private_init(_priv)                  FLUID_STMT_START { \
   if (!g_thread_supported ()) g_thread_init (NULL); \
   g_static_private_init (&(_priv)); \
-} G_STMT_END;
+} FLUID_STMT_END;
 
 #endif
 
