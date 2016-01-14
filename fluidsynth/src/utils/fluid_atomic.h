@@ -29,16 +29,15 @@
 #define _FLUID_ATOMIC_H
 
 
-#if defined(__ATOMIC_SEQ_CST)
+#if defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4)
+
+#ifdef __ATOMIC_SEQ_CST
 // Use GCC's new atomic operations.
 
 #define fluid_atomic_order __ATOMIC_SEQ_CST
 
 #define fluid_atomic_int_exchange_and_add(_pi, _val) (__atomic_add_fetch(_pi, \
                                                         _val, fluid_atomic_order))
-#define fluid_atomic_int_add(_pi, _val) (void)(fluid_atomic_int_exchange_and_add( \
-                                                _pi, _val))
-#define fluid_atomic_int_inc(_pi) fluid_atomic_int_add(_pi, 1)
 
 #define fluid_atomic_int_get(_pi) __atomic_load_n(_pi, fluid_atomic_order)
 #define fluid_atomic_int_set(_pi, _val) __atomic_store_n(_pi, _val, \
@@ -67,8 +66,53 @@ fluid_atomic_pointer_compare_and_exchange(volatile void* _pi, volatile void* _ol
 }
 
 #else
+// Use older __sync atomics.
+
+#define fluid_atomic_int_exchange_and_add(_pi, _val) __sync_add_and_fetch(_pi, \
+                                                      _val)
+
+static FLUID_INLINE int
+fluid_atomic_int_get(volatile int* _pi)
+{
+  __sync_synchronize();
+  return (int)*_pi;
+}
+
+static FLUID_INLINE void
+fluid_atomic_int_set(volatile int* _pi, int _val) {
+  *_pi = _val;
+  __sync_synchronize();
+}
+
+#define fluid_atomic_int_dec_and_test(_pi) (__sync_sub_and_fetch(_pi, 1) == 0)
+#define fluid_atomic_int_compare_and_exchange(_pi, _old, _new) \
+  ((int)__sync_bool_compare_and_swap(_pi, _old, _new))
+
+static FLUID_INLINE void*
+fluid_atomic_pointer_get(volatile void* _pi)
+{
+  __sync_synchronize();
+  return *(void**)_pi;
+}
+
+static FLUID_INLINE void
+fluid_atomic_pointer_set(volatile void* _pi, void* _val) {
+  *(void**)_pi = _val;
+  __sync_synchronize();
+}
+
+#define fluid_atomic_pointer_compare_and_exchange \
+  fluid_atomic_int_compare_and_exchange
+
+#endif // ifdef __ATOMIC_SEQ_CST
+
+#define fluid_atomic_int_add(_pi, _val) (void)(fluid_atomic_int_exchange_and_add(\
+                                                _pi, _val))
+#define fluid_atomic_int_inc(_pi) fluid_atomic_int_add(_pi, 1)
+
+#else
 #error TODO
-#endif
+#endif // defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4)
 
 static FLUID_INLINE void
 fluid_atomic_float_set(volatile float *fptr, float val)
