@@ -148,6 +148,9 @@ int fluid_timer_stop(fluid_timer_t* timer);
 #define NEW_GLIB_THREAD_API  (GLIB_MAJOR_VERSION > 2 || (GLIB_MAJOR_VERSION == 2 && GLIB_MINOR_VERSION >= 32))
 #define OLD_GLIB_THREAD_API  (GLIB_MAJOR_VERSION < 2 || (GLIB_MAJOR_VERSION == 2 && GLIB_MINOR_VERSION < 32))
 
+/* Atomics */
+#include "fluid_atomic.h"
+
 /* Muteces */
 
 #if NEW_GLIB_THREAD_API
@@ -280,49 +283,6 @@ typedef GStaticPrivate fluid_private_t;
 } FLUID_STMT_END;
 
 #endif
-
-
-/* Atomic operations */
-
-#define fluid_atomic_int_inc(_pi) g_atomic_int_inc(_pi)
-#define fluid_atomic_int_add(_pi, _val) g_atomic_int_add(_pi, _val)
-#define fluid_atomic_int_get(_pi) g_atomic_int_get(_pi)
-#define fluid_atomic_int_set(_pi, _val) g_atomic_int_set(_pi, _val)
-#define fluid_atomic_int_dec_and_test(_pi) g_atomic_int_dec_and_test(_pi)
-#define fluid_atomic_int_compare_and_exchange(_pi, _old, _new) \
-  g_atomic_int_compare_and_exchange(_pi, _old, _new)
-
-#if GLIB_MAJOR_VERSION > 2 || (GLIB_MAJOR_VERSION == 2 && GLIB_MINOR_VERSION >= 30)
-#define fluid_atomic_int_exchange_and_add(_pi, _add) \
-  g_atomic_int_add(_pi, _add)
-#else
-#define fluid_atomic_int_exchange_and_add(_pi, _add) \
-  g_atomic_int_exchange_and_add(_pi, _add)
-#endif
-
-#define fluid_atomic_pointer_get(_pp)           g_atomic_pointer_get(_pp)
-#define fluid_atomic_pointer_set(_pp, val)      g_atomic_pointer_set(_pp, val)
-#define fluid_atomic_pointer_compare_and_exchange(_pp, _old, _new) \
-  g_atomic_pointer_compare_and_exchange(_pp, _old, _new)
-
-static FLUID_INLINE void
-fluid_atomic_float_set(volatile float *fptr, float val)
-{
-  sint32 ival;
-  memcpy (&ival, &val, 4);
-  fluid_atomic_int_set ((volatile int *)fptr, ival);
-}
-
-static FLUID_INLINE float
-fluid_atomic_float_get(volatile float *fptr)
-{
-  sint32 ival;
-  float fval;
-  ival = fluid_atomic_int_get ((volatile int *)fptr);
-  memcpy (&fval, &ival, 4);
-  return fval;
-}
-
 
 /* Threads */
 
