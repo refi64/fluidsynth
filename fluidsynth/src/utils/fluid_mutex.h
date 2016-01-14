@@ -28,10 +28,6 @@
 #ifndef _FLUID_MUTEX_H
 #define _FLUID_MUTEX_H
 
-/* glib 2.32 and newer */
-
-/* Regular mutex */
-
 #if HAVE_WINDOWS_H
 
 #error TODO
@@ -39,6 +35,8 @@
 #elif HAVE_PTHREAD_H
 
 #include <pthread.h>
+
+/* Regular mutex */
 
 typedef pthread_mutex_t fluid_mutex_t;
 #define fluid_mutex_call(_f, ...) FLUID_STMT_START { \
@@ -52,14 +50,37 @@ typedef pthread_mutex_t fluid_mutex_t;
 #define fluid_mutex_lock(_m)      fluid_mutex_call(pthread_mutex_lock, &(_m))
 #define fluid_mutex_unlock(_m)    fluid_mutex_call(pthread_mutex_unlock, &(_m))
 
-#endif // HAVE_WINDOWS_H, HAVE_PTHREAD_H
-
 /* Recursive lock capable mutex */
-typedef GRecMutex fluid_rec_mutex_t;
-#define fluid_rec_mutex_init(_m)      g_rec_mutex_init(&(_m))
-#define fluid_rec_mutex_destroy(_m)   g_rec_mutex_clear(&(_m))
-#define fluid_rec_mutex_lock(_m)      g_rec_mutex_lock(&(_m))
-#define fluid_rec_mutex_unlock(_m)    g_rec_mutex_unlock(&(_m))
+
+typedef struct _fluid_rec_mutex_t {
+  pthread_mutex_t mutex;
+  pthread_mutexattr_t attr;
+} fluid_rec_mutex_t;
+
+#define fluid_rec_mutex_init(_m)      FLUID_STMT_START { \
+                                        fluid_rec_mutex_t* _mp = &(_m); \
+                                        fluid_mutex_call(pthread_mutexattr_init, \
+                                                         &_mp->attr); \
+                                        fluid_mutex_call(pthread_mutexattr_settype, \
+                                                         &_mp->attr, \
+                                                         PTHREAD_MUTEX_RECURSIVE); \
+                                        fluid_mutex_call(pthread_mutex_init, \
+                                                         &_mp->mutex, &_mp->attr); \
+                                      } FLUID_STMT_END
+#define fluid_rec_mutex_destroy(_m)   FLUID_STMT_START { \
+                                        fluid_rec_mutex_t* _mp = &(_m); \
+                                        fluid_mutex_call(pthread_mutexattr_destroy, \
+                                                         &_mp->attr); \
+                                        fluid_mutex_destroy(_mp->mutex); \
+                                      } FLUID_STMT_END
+#define fluid_rec_mutex_lock(_m)      fluid_mutex_lock((_m).mutex)
+#define fluid_rec_mutex_unlock(_m)    fluid_mutex_unlock((_m).mutex)
+
+#else
+
+#error Unsupported platform
+
+#endif // HAVE_WINDOWS_H, HAVE_PTHREAD_H
 
 /* Dynamically allocated mutex suitable for fluid_cond_t use */
 typedef GMutex    fluid_cond_mutex_t;
