@@ -153,67 +153,7 @@ int fluid_timer_stop(fluid_timer_t* timer);
 
 /* Muteces */
 
-#if NEW_GLIB_THREAD_API
-
-/* glib 2.32 and newer */
-
-/* Regular mutex */
-typedef GMutex fluid_mutex_t;
-#define FLUID_MUTEX_INIT          { 0 }
-#define fluid_mutex_init(_m)      g_mutex_init (&(_m))
-#define fluid_mutex_destroy(_m)   g_mutex_clear (&(_m))
-#define fluid_mutex_lock(_m)      g_mutex_lock(&(_m))
-#define fluid_mutex_unlock(_m)    g_mutex_unlock(&(_m))
-
-/* Recursive lock capable mutex */
-typedef GRecMutex fluid_rec_mutex_t;
-#define fluid_rec_mutex_init(_m)      g_rec_mutex_init(&(_m))
-#define fluid_rec_mutex_destroy(_m)   g_rec_mutex_clear(&(_m))
-#define fluid_rec_mutex_lock(_m)      g_rec_mutex_lock(&(_m))
-#define fluid_rec_mutex_unlock(_m)    g_rec_mutex_unlock(&(_m))
-
-/* Dynamically allocated mutex suitable for fluid_cond_t use */
-typedef GMutex    fluid_cond_mutex_t;
-#define fluid_cond_mutex_lock(m)        g_mutex_lock(m)
-#define fluid_cond_mutex_unlock(m)      g_mutex_unlock(m)
-
-static FLUID_INLINE fluid_cond_mutex_t *
-new_fluid_cond_mutex (void)
-{
-  GMutex *mutex;
-  mutex = g_new (GMutex, 1);
-  g_mutex_init (mutex);
-  return (mutex);
-}
-
-static FLUID_INLINE void
-delete_fluid_cond_mutex (fluid_cond_mutex_t *m)
-{
-  g_mutex_clear (m);
-  g_free (m);
-}
-
-/* Thread condition signaling */
-typedef GCond fluid_cond_t;
-#define fluid_cond_signal(cond)         g_cond_signal(cond)
-#define fluid_cond_broadcast(cond)      g_cond_broadcast(cond)
-#define fluid_cond_wait(cond, mutex)    g_cond_wait(cond, mutex)
-
-static FLUID_INLINE fluid_cond_t *
-new_fluid_cond (void)
-{
-  GCond *cond;
-  cond = g_new (GCond, 1);
-  g_cond_init (cond);
-  return (cond);
-}
-
-static FLUID_INLINE void
-delete_fluid_cond (fluid_cond_t *cond)
-{
-  g_cond_clear (cond);
-  g_free (cond);
-}
+#include "fluid_mutex.h"
 
 /* Thread private data */
 
@@ -223,66 +163,6 @@ typedef GPrivate fluid_private_t;
 #define fluid_private_get(_priv)                   g_private_get(&(_priv))
 #define fluid_private_set(_priv, _data)            g_private_set(&(_priv), _data)
 
-#else
-
-/* glib prior to 2.32 */
-
-/* Regular mutex */
-typedef GStaticMutex fluid_mutex_t;
-#define FLUID_MUTEX_INIT          G_STATIC_MUTEX_INIT
-#define fluid_mutex_destroy(_m)   g_static_mutex_free(&(_m))
-#define fluid_mutex_lock(_m)      g_static_mutex_lock(&(_m))
-#define fluid_mutex_unlock(_m)    g_static_mutex_unlock(&(_m))
-
-#define fluid_mutex_init(_m)      FLUID_STMT_START { \
-  if (!g_thread_supported ()) g_thread_init (NULL); \
-  g_static_mutex_init (&(_m)); \
-} FLUID_STMT_END;
-
-/* Recursive lock capable mutex */
-typedef GStaticRecMutex fluid_rec_mutex_t;
-#define fluid_rec_mutex_destroy(_m)   g_static_rec_mutex_free(&(_m))
-#define fluid_rec_mutex_lock(_m)      g_static_rec_mutex_lock(&(_m))
-#define fluid_rec_mutex_unlock(_m)    g_static_rec_mutex_unlock(&(_m))
-
-#define fluid_rec_mutex_init(_m)      FLUID_STMT_START { \
-  if (!g_thread_supported ()) g_thread_init (NULL); \
-  g_static_rec_mutex_init (&(_m)); \
-} FLUID_STMT_END;
-
-/* Dynamically allocated mutex suitable for fluid_cond_t use */
-typedef GMutex    fluid_cond_mutex_t;
-#define delete_fluid_cond_mutex(m)      g_mutex_free(m)
-#define fluid_cond_mutex_lock(m)        g_mutex_lock(m)
-#define fluid_cond_mutex_unlock(m)      g_mutex_unlock(m)
-
-static FLUID_INLINE fluid_cond_mutex_t *
-new_fluid_cond_mutex (void)
-{
-  if (!g_thread_supported ()) g_thread_init (NULL);
-  return g_mutex_new ();
-}
-
-/* Thread condition signaling */
-typedef GCond fluid_cond_t;
-fluid_cond_t *new_fluid_cond (void);
-#define delete_fluid_cond(cond)         g_cond_free(cond)
-#define fluid_cond_signal(cond)         g_cond_signal(cond)
-#define fluid_cond_broadcast(cond)      g_cond_broadcast(cond)
-#define fluid_cond_wait(cond, mutex)    g_cond_wait(cond, mutex)
-
-/* Thread private data */
-typedef GStaticPrivate fluid_private_t;
-#define fluid_private_get(_priv)                   g_static_private_get(&(_priv))
-#define fluid_private_set(_priv, _data)            g_static_private_set(&(_priv), _data, NULL)
-#define fluid_private_free(_priv)                  g_static_private_free(&(_priv))
-
-#define fluid_private_init(_priv)                  FLUID_STMT_START { \
-  if (!g_thread_supported ()) g_thread_init (NULL); \
-  g_static_private_init (&(_priv)); \
-} FLUID_STMT_END;
-
-#endif
 
 /* Threads */
 
