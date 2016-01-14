@@ -31,12 +31,35 @@
 /* glib 2.32 and newer */
 
 /* Regular mutex */
-typedef GMutex fluid_mutex_t;
-#define FLUID_MUTEX_INIT          { 0 }
-#define fluid_mutex_init(_m)      g_mutex_init (&(_m))
-#define fluid_mutex_destroy(_m)   g_mutex_clear (&(_m))
-#define fluid_mutex_lock(_m)      g_mutex_lock(&(_m))
-#define fluid_mutex_unlock(_m)    g_mutex_unlock(&(_m))
+
+#if HAVE_WINDOWS_H
+
+#error TODO
+
+#elif HAVE_PTHREAD_H
+
+#include <pthread.h>
+
+typedef pthread_mutex_t fluid_mutex_t;
+#define FLUID_MUTEX_INIT          PTHREAD_MUTEX_INITIALIZER
+#define fluid_mutex_init(_m)      FLUID_STMT_START { \
+                                    if (pthread_mutex_init(&(_m), NULL) != 0) \
+                                      fluid_warning("mutex initialization failed"); \
+                                  } FLUID_STMT_END
+#define fluid_mutex_destroy(_m)   FLUID_STMT_START { \
+                                    if (pthread_mutex_destroy(&(_m)) != 0) \
+                                      fluid_warning("mutex destruction failed"); \
+                                  } FLUID_STMT_END
+#define fluid_mutex_lock(_m)      FLUID_STMT_START { \
+                                    if (pthread_mutex_lock(&(_m)) != 0) \
+                                      fluid_warning("mutex locking failed"); \
+                                  } FLUID_STMT_END
+#define fluid_mutex_unlock(_m)    FLUID_STMT_START { \
+                                    if (pthread_mutex_unlock(&(_m)) != 0) \
+                                      fluid_warning("mutex unlocking failed"); \
+                                  } FLUID_STMT_END
+
+#endif // HAVE_WINDOWS_H, HAVE_PTHREAD_H
 
 /* Recursive lock capable mutex */
 typedef GRecMutex fluid_rec_mutex_t;
