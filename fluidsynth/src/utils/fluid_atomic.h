@@ -106,13 +106,40 @@ fluid_atomic_pointer_set(volatile void* _pi, void* _val) {
 
 #endif // ifdef __ATOMIC_SEQ_CST
 
-#define fluid_atomic_int_add(_pi, _val) (void)(fluid_atomic_int_exchange_and_add(\
-                                                _pi, _val))
 #define fluid_atomic_int_inc(_pi) fluid_atomic_int_add(_pi, 1)
 
+#elif defined(_WIN32)
+
+#include <Windows.h>
+
+#define fluid_atomic_int_exchange_and_add(_pi, _val) \
+  ((LONG)InterlockedExchangeAdd((LONG volatile*)(_pi), (LONG)(_val)))
+
+#define fluid_atomic_int_get(_pi) (*(int*)(_pi))
+#define fluid_atomic_int_set(_pi, _val) (void)(InterlockedExchange (\
+                                               (LONG volatile*)(_pi), \
+                                               (LONG)(_val)))
+#define fluid_atomic_int_dec_and_test(_pi) (InterlockedDecrement( \
+                                              (LONG volatile*)(_pi)) == 0)
+
+#define fluid_atomic_int_compare_and_exchange(_pi, _old, _new) \
+  InterlockedCompareExchange((LONG volatile*)(_pi), (LONG)(_new), (LONG)(_old))
+
+#define fluid_atomic_pointer_get(_pp) (*(void**)pp)
+#define fluid_atomic_pointer_set(_pp, _val) (void)(InterlockedExchangePointer(_pp,\
+                                                    _val))
+
+#define fluid_atomic_pointer_compare_and_exchange(_pp, _old, _new) \
+  InterlockedCompareExchangePointer(_pp, _new, _old)
+
 #else
-#error TODO
-#endif // defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4)
+
+#error Unsupported system.
+
+#endif // defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4), defined(_WIN32)
+
+#define fluid_atomic_int_add(_pi, _val) (void)(fluid_atomic_int_exchange_and_add(\
+                                                _pi, _val))
 
 static FLUID_INLINE void
 fluid_atomic_float_set(volatile float *fptr, float val)
