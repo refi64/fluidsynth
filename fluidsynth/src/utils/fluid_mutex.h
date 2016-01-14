@@ -41,23 +41,16 @@
 #include <pthread.h>
 
 typedef pthread_mutex_t fluid_mutex_t;
+#define fluid_mutex_call(_f, ...) FLUID_STMT_START { \
+                                    if (_f(__VA_ARGS__) != 0) \
+                                      FLUID_LOG(FLUID_ERR, #_f " failed"); \
+                                  } FLUID_STMT_END
+
 #define FLUID_MUTEX_INIT          PTHREAD_MUTEX_INITIALIZER
-#define fluid_mutex_init(_m)      FLUID_STMT_START { \
-                                    if (pthread_mutex_init(&(_m), NULL) != 0) \
-                                      fluid_warning("mutex initialization failed"); \
-                                  } FLUID_STMT_END
-#define fluid_mutex_destroy(_m)   FLUID_STMT_START { \
-                                    if (pthread_mutex_destroy(&(_m)) != 0) \
-                                      fluid_warning("mutex destruction failed"); \
-                                  } FLUID_STMT_END
-#define fluid_mutex_lock(_m)      FLUID_STMT_START { \
-                                    if (pthread_mutex_lock(&(_m)) != 0) \
-                                      fluid_warning("mutex locking failed"); \
-                                  } FLUID_STMT_END
-#define fluid_mutex_unlock(_m)    FLUID_STMT_START { \
-                                    if (pthread_mutex_unlock(&(_m)) != 0) \
-                                      fluid_warning("mutex unlocking failed"); \
-                                  } FLUID_STMT_END
+#define fluid_mutex_init(_m)      fluid_mutex_call(pthread_mutex_init, &(_m), NULL)
+#define fluid_mutex_destroy(_m)   fluid_mutex_call(pthread_mutex_destroy, &(_m))
+#define fluid_mutex_lock(_m)      fluid_mutex_call(pthread_mutex_lock, &(_m))
+#define fluid_mutex_unlock(_m)    fluid_mutex_call(pthread_mutex_unlock, &(_m))
 
 #endif // HAVE_WINDOWS_H, HAVE_PTHREAD_H
 

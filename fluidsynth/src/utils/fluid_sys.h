@@ -61,15 +61,11 @@ void fluid_time_config(void);
 
 #define fluid_strify2(x) #x
 #define fluid_strify(x) fluid_strify2(x)
-#define fluid_warning(msg) \
-    FLUID_STMT_START { \
-        printf("WARNING:" __FILE__ ":" fluid_strify(__LINE__) ": " msg "\n"); \
-    } FLUID_STMT_END
 
 #define fluid_return_val_if_fail(expr, ret) \
     FLUID_STMT_START { \
         if (!(expr)) { \
-            fluid_warning("condition failed: " #expr); \
+            FLUID_LOG(FLUID_ERR, "condition failed: " #expr); \
             return ret; \
         } \
     } FLUID_STMT_END
