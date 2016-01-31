@@ -613,7 +613,7 @@ new_fluid_thread (const char *name, fluid_thread_func_t func, void *data, int pr
   fluid_thread_info_t *info;
   GError *err = NULL;
 
-  g_return_val_if_fail (func != NULL, NULL);
+  fluid_return_val_if_fail (func != NULL, NULL);
 
 #if OLD_GLIB_THREAD_API
   /* Make sure g_thread_init has been called.
@@ -1035,7 +1035,7 @@ new_fluid_server_socket(int port, fluid_server_func_t func, void* data)
 #endif
   fluid_socket_t sock;
 
-  g_return_val_if_fail (func != NULL, NULL);
+  fluid_return_val_if_fail (func != NULL, NULL);
 #ifdef IPV6
   sock = socket(AF_INET6, SOCK_STREAM, 0);
   if (sock == INVALID_SOCKET) {
@@ -1194,7 +1194,7 @@ new_fluid_server_socket(int port, fluid_server_func_t func, void* data)
   WSADATA wsaData;
   int retval;
 
-  g_return_val_if_fail (func != NULL, NULL);
+  fluid_return_val_if_fail (func != NULL, NULL);
 
   // Win32 requires initialization of winsock
   retval = WSAStartup (MAKEWORD (2,2), &wsaData);
