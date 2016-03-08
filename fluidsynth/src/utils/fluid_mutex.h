@@ -39,16 +39,16 @@
 /* Regular mutex */
 
 typedef pthread_mutex_t fluid_mutex_t;
-#define fluid_mutex_call(_f, ...) FLUID_STMT_START { \
+#define fluid_pthread_call(_f, ...) FLUID_STMT_START { \
                                     if (_f(__VA_ARGS__) != 0) \
                                       FLUID_LOG(FLUID_ERR, #_f " failed"); \
                                   } FLUID_STMT_END
 
 #define FLUID_MUTEX_INIT          PTHREAD_MUTEX_INITIALIZER
-#define fluid_mutex_init(_m)      fluid_mutex_call(pthread_mutex_init, &(_m), NULL)
-#define fluid_mutex_destroy(_m)   fluid_mutex_call(pthread_mutex_destroy, &(_m))
-#define fluid_mutex_lock(_m)      fluid_mutex_call(pthread_mutex_lock, &(_m))
-#define fluid_mutex_unlock(_m)    fluid_mutex_call(pthread_mutex_unlock, &(_m))
+#define fluid_mutex_init(_m)      fluid_pthread_call(pthread_mutex_init, &(_m), NULL)
+#define fluid_mutex_destroy(_m)   fluid_pthread_call(pthread_mutex_destroy, &(_m))
+#define fluid_mutex_lock(_m)      fluid_pthread_call(pthread_mutex_lock, &(_m))
+#define fluid_mutex_unlock(_m)    fluid_pthread_call(pthread_mutex_unlock, &(_m))
 
 /* Recursive lock capable mutex */
 
@@ -59,22 +59,44 @@ typedef struct _fluid_rec_mutex_t {
 
 #define fluid_rec_mutex_init(_m)      FLUID_STMT_START { \
                                         fluid_rec_mutex_t* _mp = &(_m); \
-                                        fluid_mutex_call(pthread_mutexattr_init, \
-                                                         &_mp->attr); \
-                                        fluid_mutex_call(pthread_mutexattr_settype, \
-                                                         &_mp->attr, \
-                                                         PTHREAD_MUTEX_RECURSIVE); \
-                                        fluid_mutex_call(pthread_mutex_init, \
-                                                         &_mp->mutex, &_mp->attr); \
+                                        fluid_pthread_call(pthread_mutexattr_init, \
+                                                           &_mp->attr); \
+                                        fluid_pthread_call(pthread_mutexattr_settype, \
+                                                           &_mp->attr, \
+                                                           PTHREAD_MUTEX_RECURSIVE); \
+                                        fluid_pthread_call(pthread_mutex_init, \
+                                                           &_mp->mutex, &_mp->attr); \
                                       } FLUID_STMT_END
 #define fluid_rec_mutex_destroy(_m)   FLUID_STMT_START { \
                                         fluid_rec_mutex_t* _mp = &(_m); \
-                                        fluid_mutex_call(pthread_mutexattr_destroy, \
-                                                         &_mp->attr); \
+                                        fluid_pthread_call(pthread_mutexattr_destroy, \
+                                                           &_mp->attr); \
                                         fluid_mutex_destroy(_mp->mutex); \
                                       } FLUID_STMT_END
 #define fluid_rec_mutex_lock(_m)      fluid_mutex_lock((_m).mutex)
 #define fluid_rec_mutex_unlock(_m)    fluid_mutex_unlock((_m).mutex)
+
+/* Thread condition signaling */
+
+typedef pthread_cond_t fluid_cond_t;
+#define fluid_cond_signal(cond)         pthread_cond_signal(cond)
+#define fluid_cond_broadcast(cond)      pthread_cond_broadcast(cond)
+#define fluid_cond_wait(cond, mutex)    pthread_cond_wait(cond, mutex)
+
+static FLUID_INLINE fluid_cond_t *
+new_fluid_cond (void)
+{
+  fluid_cond_t* cond = FLUID_NEW(fluid_cond_t);
+  fluid_pthread_call(pthread_cond_init, cond, NULL);
+  return (cond);
+}
+
+static FLUID_INLINE void
+delete_fluid_cond (fluid_cond_t *cond)
+{
+  fluid_pthread_call(pthread_cond_destroy, cond);
+  free(cond);
+}
 
 #else
 
@@ -101,28 +123,6 @@ delete_fluid_cond_mutex (fluid_cond_mutex_t *m)
 {
   g_mutex_clear (m);
   g_free (m);
-}
-
-/* Thread condition signaling */
-typedef GCond fluid_cond_t;
-#define fluid_cond_signal(cond)         g_cond_signal(cond)
-#define fluid_cond_broadcast(cond)      g_cond_broadcast(cond)
-#define fluid_cond_wait(cond, mutex)    g_cond_wait(cond, mutex)
-
-static FLUID_INLINE fluid_cond_t *
-new_fluid_cond (void)
-{
-  GCond *cond;
-  cond = g_new (GCond, 1);
-  g_cond_init (cond);
-  return (cond);
-}
-
-static FLUID_INLINE void
-delete_fluid_cond (fluid_cond_t *cond)
-{
-  g_cond_clear (cond);
-  g_free (cond);
 }
 
 #endif
