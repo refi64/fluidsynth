@@ -108,9 +108,23 @@ new_fluid_pulse_audio_driver2(fluid_settings_t* settings,
   fluid_settings_getint(settings, "audio.realtime-prio", &realtime_prio);
   fluid_settings_getint(settings, "audio.pulseaudio.adjust-latency", &adjust_latency);
 
+  #define PULSE_ENV "PULSE_PROP_media.role"
+
   if (media_role != NULL) {
     if (strcmp(media_role, "") != 0) {
-      g_setenv("PULSE_PROP_media.role", media_role, TRUE);
+      #ifdef HAVE_SETENV
+      setenv(PULSE_ENV, media_role, TRUE);
+      #else
+      char* buf = FLUID_MALLOC(strlen(media_role) + 1 + sizeof(PULSE_ENV));
+      if (buf == NULL) {
+        FLUID_LOG(FLUID_ERR, "Out of memory");
+        return NULL;
+      }
+      memcpy(buf, PULSE_ENV, sizeof(PULSE_ENV)-1);
+      buf[sizeof(PULSE_ENV)-1] = '=';
+      memcpy(buf+sizeof(PULSE_ENV), media_role, strlen(media_role)+1);
+      putenv(buf);
+      #endif
     }
     FLUID_FREE (media_role);      /* -- free media_role string */
   }
