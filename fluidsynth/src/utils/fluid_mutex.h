@@ -105,24 +105,23 @@ delete_fluid_cond (fluid_cond_t *cond)
 #endif // HAVE_WINDOWS_H, HAVE_PTHREAD_H
 
 /* Dynamically allocated mutex suitable for fluid_cond_t use */
-typedef GMutex    fluid_cond_mutex_t;
-#define fluid_cond_mutex_lock(m)        g_mutex_lock(m)
-#define fluid_cond_mutex_unlock(m)      g_mutex_unlock(m)
+typedef fluid_mutex_t fluid_cond_mutex_t;
+#define fluid_cond_mutex_lock(m)        fluid_mutex_lock(*m)
+#define fluid_cond_mutex_unlock(m)      fluid_mutex_unlock(*m)
 
 static FLUID_INLINE fluid_cond_mutex_t *
 new_fluid_cond_mutex (void)
 {
-  GMutex *mutex;
-  mutex = g_new (GMutex, 1);
-  g_mutex_init (mutex);
+  fluid_cond_mutex_t* mutex = FLUID_NEW(fluid_cond_mutex_t);
+  fluid_mutex_init(*mutex);
   return (mutex);
 }
 
 static FLUID_INLINE void
 delete_fluid_cond_mutex (fluid_cond_mutex_t *m)
 {
-  g_mutex_clear (m);
-  g_free (m);
+  fluid_mutex_destroy(*m);
+  free(m);
 }
 
 #endif
