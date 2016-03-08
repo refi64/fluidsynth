@@ -711,7 +711,7 @@ fluid_timer_run (void *data)
        two callbacks bringing in the "absolute" time (count *
        timer->msec) */
     delay = (count * timer->msec) - (fluid_curtime() - start);
-    if (delay > 0) g_usleep (delay * 1000);
+    if (delay > 0) fluid_sleep (delay);
   }
 
   FLUID_LOG (FLUID_DBG, "Timer thread finished");

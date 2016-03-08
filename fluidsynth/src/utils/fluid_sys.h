@@ -301,4 +301,12 @@ extern fluid_profile_data_t fluid_profile_data[];
 unsigned int fluid_check_fpe_i386(char * explanation_in_case_of_fpe);
 void fluid_clear_fpe_i386(void);
 
+/* Sleeping */
+
+#if HAVE_WINDOWS_H
+#define fluid_sleep(ms) Sleep(ms)
+#else
+#define fluid_sleep(ms) usleep((ms) * 1000)
+#endif
+
 #endif /* _FLUID_SYS_H */
