@@ -367,34 +367,84 @@ fluid_is_soundfont(const char *filename)
  * Get time in milliseconds to be used in relative timing operations.
  * @return Unix time in milliseconds.
  */
-unsigned int fluid_curtime(void)
-{
-  static glong initial_seconds = 0;
-  GTimeVal timeval;
-
-  if (initial_seconds == 0) {
-    g_get_current_time (&timeval);
-    initial_seconds = timeval.tv_sec;
-  }
-
-  g_get_current_time (&timeval);
-
-  return (unsigned int)((timeval.tv_sec - initial_seconds) * 1000.0 + timeval.tv_usec / 1000.0);
-}
+unsigned int fluid_curtime(void);
 
 /**
  * Get time in microseconds to be used in relative timing operations.
  * @return Unix time in microseconds.
  */
 double
-fluid_utime (void)
-{
-  GTimeVal timeval;
+fluid_utime (void);
 
-  g_get_current_time (&timeval);
+#if HAVE_WINDOWS_H
 
-  return (timeval.tv_sec * 1000000.0 + timeval.tv_usec);
+double fluid_utime(void) {
+  LARGE_INTEGER freq;
+  if (QueryPerformanceFrequency(&freq)) {
+    LARGE_INTEGER time;
+    QueryPerformanceCounter(&time);
+    return (double)time.QuadPart / freq.QuadPart;
+  } else {
+    return (double)GetTickCount() / 1000.0;
+  }
 }
+
+unsigned int fluid_curtime(void) { return fluid_utime() * 1000; }
+
+#else /* HAVE_WINDOWS_H */
+
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+
+typedef mach_timespec_t timespec_type;
+
+FLUID_INLINE void get_timespec(timespec_type* tm)
+{
+  clock_serv_t cclock;
+  host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
+  clock_get_time(cclock, tm);
+  mach_port_deallocate(mach_task_self(), cclock);
+}
+
+#else /* ifdef __MACH__ */
+
+typedef struct timespec timespec_type;
+
+FLUID_INLINE void get_timespec(timespec_type* tm)
+{
+  clock_gettime(CLOCK_MONOTONIC, tm);
+}
+
+#endif /* ifdef __MACH__ */
+
+#define USEC(tm) ((tm).tv_nsec / 1000)
+
+unsigned int fluid_curtime(void)
+{
+  static long initial_seconds = 0;
+  timespec_type timeval;
+
+  if (initial_seconds == 0) {
+    get_timespec(&timeval);
+    initial_seconds = timeval.tv_sec;
+  }
+
+  get_timespec(&timeval);
+
+  return (unsigned int)((timeval.tv_sec - initial_seconds) * 1000.0 + USEC(timeval) / 1000.0);
+}
+
+double fluid_utime(void)
+{
+  timespec_type timeval;
+
+  get_timespec(&timeval);
+
+  return (timeval.tv_sec * 1000000.0 + USEC(timeval));
+}
+
+#endif /* HAVE_WINDOWS_H */
 
 
 #if defined(WIN32)      /* Windoze specific stuff */
