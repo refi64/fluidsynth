@@ -37,7 +37,6 @@
 /* SCHED_FIFO priority for high priority timer threads */
 #define FLUID_SYS_TIMER_HIGH_PRIO_LEVEL         10
 
-
 typedef struct
 {
   fluid_thread_func_t func;
@@ -621,25 +620,10 @@ void fluid_profiling_print(void)
  *
  */
 
-#if OLD_GLIB_THREAD_API
-
-/* Rather than inline this one, we just declare it as a function, to prevent
- * GCC warning about inline failure. */
-fluid_cond_t *
-new_fluid_cond (void)
-{
-  if (!g_thread_supported ()) g_thread_init (NULL);
-  return g_cond_new ();
-}
-
-#endif
-
-static gpointer
-fluid_thread_high_prio (gpointer data)
+static void*
+fluid_thread_func (void* data)
 {
   fluid_thread_info_t *info = data;
-
-  fluid_thread_self_set_prio (info->prio_level);
 
   info->func (info->data);
   FLUID_FREE (info);
@@ -659,54 +643,72 @@ fluid_thread_high_prio (gpointer data)
 fluid_thread_t *
 new_fluid_thread (const char *name, fluid_thread_func_t func, void *data, int prio_level, int detach)
 {
-  GThread *thread;
+  fluid_thread_t *thread;
   fluid_thread_info_t *info;
-  GError *err = NULL;
+  int err;
 
   fluid_return_val_if_fail (func != NULL, NULL);
 
-#if OLD_GLIB_THREAD_API
-  /* Make sure g_thread_init has been called.
-   * FIXME - Probably not a good idea in a shared library,
-   * but what can we do *and* remain backwards compatible? */
-  if (!g_thread_supported ()) g_thread_init (NULL);
-#endif
+  info = FLUID_NEW (fluid_thread_info_t);
 
-  if (prio_level > 0)
+  if (!info)
   {
-    info = FLUID_NEW (fluid_thread_info_t);
-
-    if (!info)
-    {
-      FLUID_LOG(FLUID_ERR, "Out of memory");
-      return NULL;
-    }
-
-    info->func = func;
-    info->data = data;
-    info->prio_level = prio_level;
-#if NEW_GLIB_THREAD_API
-    thread = g_thread_try_new (name, fluid_thread_high_prio, info, &err);
-#else
-    thread = g_thread_create (fluid_thread_high_prio, info, detach == FALSE, &err);
-#endif
-  }
-#if NEW_GLIB_THREAD_API
-  else thread = g_thread_try_new (name, (GThreadFunc)func, data, &err);
-#else
-  else thread = g_thread_create ((GThreadFunc)func, data, detach == FALSE, &err);
-#endif
-
-  if (!thread)
-  {
-    FLUID_LOG(FLUID_ERR, "Failed to create the thread: %s",
-              fluid_gerror_message (err));
-    g_clear_error (&err);
+    FLUID_LOG(FLUID_ERR, "Out of memory");
     return NULL;
   }
 
-#if NEW_GLIB_THREAD_API
-  if (detach) g_thread_unref (thread);  // Release thread reference, if caller wants to detach
+  info->func = func;
+  info->data = data;
+
+#if HAVE_WINDOWS_H
+
+#error TODO
+
+#else
+  pthread_attr_t attr;
+  struct sched_param sched_param;
+
+  err = pthread_attr_init (&attr);
+  if (err)
+  {
+    FLUID_LOG(FLUID_ERR, "Failed to initialize pthread attributes: %s", strerror(err));
+    return NULL;
+  }
+
+  err = pthread_attr_setschedpolicy (&attr, SCHED_FIFO);
+
+  pthread_attr_getschedparam (&attr, &sched_param);
+  sched_param.sched_priority = prio_level > 0 ? 1 : 0;
+
+  if (!err)
+  {
+    err = pthread_attr_setschedparam (&attr, &sched_param);
+  }
+
+  if (err)
+  {
+    FLUID_LOG(FLUID_ERR, "Failed to set pthread attributes: %s", strerror(err));
+    return NULL;
+  }
+
+  thread = FLUID_NEW (fluid_thread_t);
+
+  err = pthread_create (thread, &attr, fluid_thread_func, info);
+  if (err)
+  {
+    FLUID_LOG(FLUID_ERR, "Failed to create the thread: %s", strerror(err));
+    return NULL;
+  }
+
+  if (detach)
+  {
+    err = pthread_detach (*thread);
+    if (err) {
+      FLUID_LOG(FLUID_ERR, "Failed to detach the thread: %s", strerror(err));
+      return NULL;
+    }
+  }
+
 #endif
 
   return thread;
@@ -719,7 +721,15 @@ new_fluid_thread (const char *name, fluid_thread_func_t func, void *data, int pr
 void
 delete_fluid_thread(fluid_thread_t* thread)
 {
-  /* Threads free themselves when they quit, nothing to do */
+#if HAVE_WINDOWS_H
+
+#error TODO
+
+#else
+  pthread_join (*thread, NULL);
+  free(thread);
+
+#endif
 }
 
 /**
@@ -730,9 +740,21 @@ delete_fluid_thread(fluid_thread_t* thread)
 int
 fluid_thread_join(fluid_thread_t* thread)
 {
-  g_thread_join (thread);
+#if HAVE_WINDOWS_H
 
-  return FLUID_OK;
+#error TODO
+
+#else
+
+  if (pthread_join (*thread, NULL))
+  {
+    return FLUID_FAILED;
+  }
+  else {
+    return FLUID_OK;
+  }
+
+#endif
 }
 
 
