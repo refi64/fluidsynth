@@ -30,7 +30,51 @@
 
 #if HAVE_WINDOWS_H
 
-#error TODO
+/* Regular mutex */
+
+typedef HANDLE fluid_mutex_t;
+#define fluid_mwinapi_call(_f, _r, ...) FLUID_STMT_START { \
+                                          if ((__VA_ARGS__) == (_r)) \
+                                            FLUID_LOG(FLUID_ERR, #_f " failed"); \
+                                        } FLUID_STMT_END
+
+#define FLUID_MUTEX_INIT NULL
+#define fluid_mutex_init(_m)      fluid_mwinapi_call(CreateMutex, NULL, \
+                                    ((_m) = CreateMutex(NULL, FALSE, NULL)))
+#define fluid_mutex_destroy(_m)   fluid_mwinapi_call(CloseHandle, 0, \
+                                    CloseHandle((_m)))
+#define fluid_mutex_lock(_m)      fluid_win_mutex_lock(&(_m))
+#define fluid_mutex_unlock(_m)    fluid_win_mutex_unlock(&(_m))
+
+static void
+fluid_win_mutex_lock (fluid_mutex_t* mutex)
+{
+  if (*mutex == NULL)
+    fluid_mutex_init(*mutex);
+  fluid_mwinapi_call(WaitForSingleObject, WAIT_FAILED, \
+    WaitForSingleObject(*mutex, INFINITE));
+}
+
+static void
+fluid_win_mutex_unlock (fluid_mutex_t* mutex)
+{
+  if (*mutex == NULL)
+    return;
+  fluid_mwinapi_call(ReleaseMutex, 0, ReleaseMutex(*mutex));
+}
+
+/* On Windows, mutexes are already recursive. */
+
+typedef fluid_mutex_t fluid_rec_mutex_t;
+
+#define fluid_rec_mutex_init(_m)      fluid_mutex_init(_m)
+#define fluid_rec_mutex_destroy(_m)   fluid_mutex_destroy(_m)
+#define fluid_rec_mutex_lock(_m)      fluid_mutex_lock(_m)
+#define fluid_rec_mutex_unlock(_m)    fluid_mutex_unlock(_m)
+
+/* Thread condition signaling */
+
+typedef ;
 
 #elif HAVE_PTHREAD_H
 
@@ -78,23 +122,21 @@ typedef struct _fluid_rec_mutex_t {
 
 /* Thread condition signaling */
 
-typedef pthread_cond_t fluid_cond_t;
-#define fluid_cond_signal(cond)         pthread_cond_signal(cond)
-#define fluid_cond_broadcast(cond)      pthread_cond_broadcast(cond)
-#define fluid_cond_wait(cond, mutex)    pthread_cond_wait(cond, mutex)
+// TODO: This will explode into a violent flame.
+
+typedef int fluid_cond_t;
+#define fluid_cond_mutex_lock(m)        ((void)0)
+#define fluid_cond_mutex_unlock(m)      ((void)0)
 
 static FLUID_INLINE fluid_cond_t *
 new_fluid_cond (void)
 {
-  fluid_cond_t* cond = FLUID_NEW(fluid_cond_t);
-  fluid_pthread_call(pthread_cond_init, cond, NULL);
-  return (cond);
+  return FLUID_NEW(int);
 }
 
 static FLUID_INLINE void
 delete_fluid_cond (fluid_cond_t *cond)
 {
-  fluid_pthread_call(pthread_cond_destroy, cond);
   free(cond);
 }
 
