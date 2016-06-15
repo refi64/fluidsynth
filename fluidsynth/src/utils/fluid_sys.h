@@ -163,18 +163,23 @@ typedef GPrivate fluid_private_t;
 
 #ifdef HAVE_WINDOWS_H
 
-#error TODO
+typedef HANDLE fluid_thread_t;
+
+#define FLUID_THREAD_ID_NULL            0                       /* A NULL "ID" value */
+#define fluid_thread_id_t               DWORD                   /* Data type for a thread ID */
+#define fluid_thread_get_id()           GetCurrentThreadId()    /* Get unique "ID" for current thread */
 
 #else
 
 typedef pthread_t fluid_thread_t;
-typedef void (*fluid_thread_func_t)(void* data);
 
 #define FLUID_THREAD_ID_NULL            NULL                    /* A NULL "ID" value */
 #define fluid_thread_id_t               fluid_thread_t *        /* Data type for a thread ID */
 #define fluid_thread_get_id()           pthread_self()          /* Get unique "ID" for current thread */
 
 #endif
+
+typedef void (*fluid_thread_func_t)(void* data);
 
 fluid_thread_t* new_fluid_thread(const char *name, fluid_thread_func_t func, void *data,
                                  int prio_level, int detach);

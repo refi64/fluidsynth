@@ -483,7 +483,7 @@ fluid_thread_self_set_prio (int prio_level)
     }
 #ifdef DBUS_SUPPORT
 /* Try to gain high priority via rtkit */
-    
+
     if (fluid_rtkit_make_realtime(0, prio_level) == 0) {
       return;
     }
@@ -662,9 +662,38 @@ new_fluid_thread (const char *name, fluid_thread_func_t func, void *data, int pr
 
 #if HAVE_WINDOWS_H
 
-#error TODO
+  thread = FLUID_NEW(HANDLE);
+  if (thread == NULL) {
+    FLUID_LOG(FLUID_ERR, "Memory allocation failed");
+    return NULL;
+  }
+
+  *thread = CreateThread(NULL, 0, fluid_thread_func, info, CREATE_SUSPENDED, NULL);
+  if (*thread == NULL)
+  {
+    FLUID_LOG(FLUID_ERR, "Failed to create thread");
+    return NULL;
+  }
+
+  err = SetThreadPriority(*thread, THREAD_PRIORITY_ABOVE_NORMAL);
+  if (err == 0) {
+    FLUID_LOG(FLUID_ERR, "Failed to set thread priority");
+  }
+
+  err = ResumeThread(*thread);
+  if (err == -1) {
+    FLUID_LOG(FLUID_ERR, "Failed to resume thread after creation");
+    return NULL;
+  }
+
+  if (detach) {
+    err = CloseHandle(*thread);
+    if (err == 0)
+      FLUID_LOG(FLUID_ERR, "Failed to detach thread after creation");
+  }
 
 #else
+
   pthread_attr_t attr;
   struct sched_param sched_param;
 
@@ -722,14 +751,12 @@ void
 delete_fluid_thread(fluid_thread_t* thread)
 {
 #if HAVE_WINDOWS_H
-
-#error TODO
-
+  WaitForSingleObject(*thread, INFINITE);
 #else
   pthread_join (*thread, NULL);
-  free(thread);
-
 #endif
+
+  free(thread);
 }
 
 /**
@@ -742,7 +769,14 @@ fluid_thread_join(fluid_thread_t* thread)
 {
 #if HAVE_WINDOWS_H
 
-#error TODO
+  if (WaitForSingleObject (*thread, NULL) == WAIT_FAILED)
+  {
+    return FLUID_FAILED;
+  }
+  else
+  {
+    return FLUID_OK;
+  }
 
 #else
 
