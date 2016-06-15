@@ -74,7 +74,26 @@ typedef fluid_mutex_t fluid_rec_mutex_t;
 
 /* Thread condition signaling */
 
-typedef ;
+// TODO: This will explode into a violent flame.
+
+typedef int fluid_cond_t;
+#define fluid_cond(m)        ((void)0)
+#define fluid_cond_mutex_unlock(m)      ((void)0)
+
+static FLUID_INLINE fluid_cond_mutex_t *
+new_fluid_cond_mutex (void)
+{
+  fluid_cond_mutex_t* mutex = FLUID_NEW(fluid_cond_mutex_t);
+  fluid_mutex_init(*mutex);
+  return (mutex);
+}
+
+static FLUID_INLINE void
+delete_fluid_cond_mutex (fluid_cond_mutex_t *m)
+{
+  fluid_mutex_destroy(*m);
+  free(m);
+}
 
 #elif HAVE_PTHREAD_H
 
@@ -122,21 +141,23 @@ typedef struct _fluid_rec_mutex_t {
 
 /* Thread condition signaling */
 
-// TODO: This will explode into a violent flame.
-
-typedef int fluid_cond_t;
-#define fluid_cond_mutex_lock(m)        ((void)0)
-#define fluid_cond_mutex_unlock(m)      ((void)0)
+typedef pthread_cond_t fluid_cond_t;
+#define fluid_cond_signal(cond)         pthread_cond_signal(cond)
+#define fluid_cond_broadcast(cond)      pthread_cond_broadcast(cond)
+#define fluid_cond_wait(cond, mutex)    pthread_cond_wait(cond, mutex)
 
 static FLUID_INLINE fluid_cond_t *
 new_fluid_cond (void)
 {
-  return FLUID_NEW(int);
+  fluid_cond_t* cond = FLUID_NEW(fluid_cond_t);
+  fluid_pthread_call(pthread_cond_init, cond, NULL);
+  return (cond);
 }
 
 static FLUID_INLINE void
 delete_fluid_cond (fluid_cond_t *cond)
 {
+  fluid_pthread_call(pthread_cond_destroy, cond);
   free(cond);
 }
 
