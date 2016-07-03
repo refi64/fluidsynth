@@ -51,7 +51,7 @@ fluid_win_mutex_lock (fluid_mutex_t* mutex)
 {
   if (*mutex == NULL)
     fluid_mutex_init(*mutex);
-  fluid_mwinapi_call(WaitForSingleObject, WAIT_FAILED, \
+  fluid_mwinapi_call(WaitForSingleObject, WAIT_FAILED,
     WaitForSingleObject(*mutex, INFINITE));
 }
 
@@ -74,25 +74,34 @@ typedef fluid_mutex_t fluid_rec_mutex_t;
 
 /* Thread condition signaling */
 
-// TODO: This will explode into a violent flame.
+typedef HANDLE fluid_cond_t;
 
-typedef int fluid_cond_t;
-#define fluid_cond(m)        ((void)0)
-#define fluid_cond_mutex_unlock(m)      ((void)0)
+#define fluid_cond_signal(cond)         FLUID_STMT_START { \
+                                          fluid_mwinapi_call(ReleaseSemaphore, 0, \
+                                            ReleaseSemaphore(*cond, 1, NULL));\
+                                          FLUID_STMT_END
+#define fluid_cond_broadcast(cond)      fluid_cond_signal(cond)
+#define fluid_cond_wait(cond, mutex)    FLUID_STMT_START { \
+                                          fluid_mwinapi_call(SignalObjectAndWait, \
+                                            WAIT_FAILED, \
+                                            SignalObjectAndWait(*mutex, *cond, INFINITE, FALSE)); \
+                                          fluid_mutex_lock(mutex); \
+                                        } FLUID_STMT_END
 
-static FLUID_INLINE fluid_cond_mutex_t *
-new_fluid_cond_mutex (void)
+static FLUID_INLINE fluid_cond_t *
+new_fluid_cond (void)
 {
-  fluid_cond_mutex_t* mutex = FLUID_NEW(fluid_cond_mutex_t);
-  fluid_mutex_init(*mutex);
-  return (mutex);
+  fluid_cond_t* cond = FLUID_NEW(fluid_cond_t);
+  fluid_mwinapi_call(CreateSemaphore, NULL,
+                     CreateSemaphore(NULL, 0, MAX_SEM_COUNT, NULL));
+  return (cond);
 }
 
 static FLUID_INLINE void
-delete_fluid_cond_mutex (fluid_cond_mutex_t *m)
+delete_fluid_cond (fluid_cond_t *cond)
 {
-  fluid_mutex_destroy(*m);
-  free(m);
+  CloseHandle(*cond);
+  free(cond);
 }
 
 #elif HAVE_PTHREAD_H
@@ -168,6 +177,7 @@ delete_fluid_cond (fluid_cond_t *cond)
 #endif // HAVE_WINDOWS_H, HAVE_PTHREAD_H
 
 /* Dynamically allocated mutex suitable for fluid_cond_t use */
+
 typedef fluid_mutex_t fluid_cond_mutex_t;
 #define fluid_cond_mutex_lock(m)        fluid_mutex_lock(*m)
 #define fluid_cond_mutex_unlock(m)      fluid_mutex_unlock(*m)
