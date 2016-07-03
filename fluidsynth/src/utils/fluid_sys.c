@@ -620,7 +620,12 @@ void fluid_profiling_print(void)
  *
  */
 
-static void*
+static
+#if HAVE_WINDOWS_H
+DWORD __stdcall
+#else
+void*
+#endif
 fluid_thread_func (void* data)
 {
   fluid_thread_info_t *info = data;
@@ -628,7 +633,11 @@ fluid_thread_func (void* data)
   info->func (info->data);
   FLUID_FREE (info);
 
+#if HAVE_WINDOWS_H
+  return 0;
+#else
   return NULL;
+#endif
 }
 
 /**
@@ -769,7 +778,7 @@ fluid_thread_join(fluid_thread_t* thread)
 {
 #if HAVE_WINDOWS_H
 
-  if (WaitForSingleObject (*thread, NULL) == WAIT_FAILED)
+  if (WaitForSingleObject (*thread, INFINITE) == WAIT_FAILED)
   {
     return FLUID_FAILED;
   }

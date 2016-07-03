@@ -79,13 +79,13 @@ typedef HANDLE fluid_cond_t;
 #define fluid_cond_signal(cond)         FLUID_STMT_START { \
                                           fluid_mwinapi_call(ReleaseSemaphore, 0, \
                                             ReleaseSemaphore(*cond, 1, NULL));\
-                                          FLUID_STMT_END
+                                        } FLUID_STMT_END
 #define fluid_cond_broadcast(cond)      fluid_cond_signal(cond)
 #define fluid_cond_wait(cond, mutex)    FLUID_STMT_START { \
                                           fluid_mwinapi_call(SignalObjectAndWait, \
                                             WAIT_FAILED, \
                                             SignalObjectAndWait(*mutex, *cond, INFINITE, FALSE)); \
-                                          fluid_mutex_lock(mutex); \
+                                          fluid_cond_mutex_lock(mutex); \
                                         } FLUID_STMT_END
 
 static FLUID_INLINE fluid_cond_t *
@@ -93,7 +93,7 @@ new_fluid_cond (void)
 {
   fluid_cond_t* cond = FLUID_NEW(fluid_cond_t);
   fluid_mwinapi_call(CreateSemaphore, NULL,
-                     CreateSemaphore(NULL, 0, MAX_SEM_COUNT, NULL));
+                     CreateSemaphore(NULL, 0, LONG_MAX, NULL));
   return (cond);
 }
 
