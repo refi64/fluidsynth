@@ -24,7 +24,7 @@
    This header contains an implementation of atomic operations.
 
  */
- 
+
 #ifndef _FLUID_ATOMIC_H
 #define _FLUID_ATOMIC_H
 
@@ -106,8 +106,6 @@ fluid_atomic_pointer_set(volatile void* _pi, void* _val) {
 
 #endif // ifdef __ATOMIC_SEQ_CST
 
-#define fluid_atomic_int_inc(_pi) fluid_atomic_int_add(_pi, 1)
-
 #elif defined(_WIN32)
 
 #include <Windows.h>
@@ -140,6 +138,7 @@ fluid_atomic_pointer_set(volatile void* _pi, void* _val) {
 
 #define fluid_atomic_int_add(_pi, _val) (void)(fluid_atomic_int_exchange_and_add(\
                                                 _pi, _val))
+#define fluid_atomic_int_inc(_pi) fluid_atomic_int_add(_pi, 1)
 
 static FLUID_INLINE void
 fluid_atomic_float_set(volatile float *fptr, float val)
