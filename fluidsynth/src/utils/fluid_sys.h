@@ -157,7 +157,7 @@ int fluid_timer_stop(fluid_timer_t* timer);
 
 typedef DWORD fluid_private_t;
 #define fluid_private_init(_priv)                  FLUID_STMT_START { \
-                                                     if ((*(_priv) = TlsAlloc()) == TLS_OUT_OF_INDEXES) \
+                                                     if (((_priv) = TlsAlloc()) == TLS_OUT_OF_INDEXES) \
                                                        FLUID_LOG(FLUID_ERR, "Error calling TlsAlloc"); \
                                                    } FLUID_STMT_END
 #define fluid_private_free(_priv)                  TlsFree((_priv))
