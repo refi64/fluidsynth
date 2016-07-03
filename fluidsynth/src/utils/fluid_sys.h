@@ -153,11 +153,35 @@ int fluid_timer_stop(fluid_timer_t* timer);
 
 /* Thread private data */
 
-typedef GPrivate fluid_private_t;
-#define fluid_private_init(_priv)                  memset (&_priv, 0, sizeof (_priv))
+#ifdef HAVE_WINDOWS_H
+
+typedef DWORD fluid_private_t;
+#define fluid_private_init(_priv)                  FLUID_STMT_START { \
+                                                     if ((*(_priv) = TlsAlloc()) == TLS_OUT_OF_INDEXES) \
+                                                       FLUID_LOG(FLUID_ERR, "Error calling TlsAlloc"); \
+                                                   } FLUID_STMT_END
+#define fluid_private_free(_priv)                  TlsFree((_priv))
+#define fluid_private_get(_priv)                   TlsGetValue((_priv))
+#define fluid_private_set(_priv, _data)            FLUID_STMT_START { \
+                                                     if (TlsSetValue((_priv), (_data)) == 0) \
+                                                       FLUID_LOG(FLUID_ERR, "Error calling pthread_setspecific"); \
+                                                   } FLUID_STMT_END
+
+#else
+
+typedef pthread_key_t fluid_private_t;
+#define fluid_private_init(_priv)                  FLUID_STMT_START { \
+                                                     if (pthread_key_create(&(_priv), NULL) != 0) \
+                                                       FLUID_LOG(FLUID_ERR, "Error calling pthread_key_create"); \
+                                                   } FLUID_STMT_END
 #define fluid_private_free(_priv)
-#define fluid_private_get(_priv)                   g_private_get(&(_priv))
-#define fluid_private_set(_priv, _data)            g_private_set(&(_priv), _data)
+#define fluid_private_get(_priv)                   pthread_getspecific((_priv))
+#define fluid_private_set(_priv, _data)            FLUID_STMT_START { \
+                                                     if (pthread_setspecific((_priv), (_data)) != 0) \
+                                                       FLUID_LOG(FLUID_ERR, "Error calling pthread_setspecific"); \
+                                                   } FLUID_STMT_END
+
+#endif
 
 /* Threads */
 
